@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block title %}Faculty Management - SIMS{% endblock %}
+{% block header_title %}Faculty Directory{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h2><i class="fas fa-chalkboard-teacher" style="color: var(--primary);"></i> Faculty Members ({{ faculty_list | length }})</h2>
+    <button type="button" class="btn btn-primary" onclick="openModal('addFacultyModal')">
+      <i class="fas fa-plus"></i> Add Faculty Member
+    </button>
+  </div>
+
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Department / Specialization</th>
+            <th>Contact Email/Phone</th>
+            <th>Login Username</th>
+            <th>Assigned Courses</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in faculty_list %}
+            <tr>
+              <td>
+                <div style="font-weight: 600; color: var(--text-main);">{{ f.name }}</div>
+              </td>
+              <td><span class="badge" style="background: #f0fdfa; color: #0f766e; border: 1px solid #99f6e4;">{{ f.subject or 'General' }}</span></td>
+              <td>{{ f.contact or 'N/A' }}</td>
+              <td><code>{{ f.username or 'No Login' }}</code></td>
+              <td style="max-width: 250px; font-size: 0.82rem; color: var(--text-muted);">
+                {{ f.assigned_courses or 'No courses assigned' }}
+              </td>
+              <td style="text-align: right;">
+                <div class="action-btns" style="justify-content: flex-end;">
+                  <button type="button" class="btn btn-secondary btn-icon" title="Edit Faculty"
+                          onclick="editFacultyModal({{ f.id }}, '{{ f.name | escape }}', '{{ (f.subject or '') | escape }}', '{{ (f.contact or '') | escape }}')">
+                    <i class="fas fa-pencil-alt"></i>
+                  </button>
+                  <form method="POST" action="{{ url_for('delete_faculty', faculty_id=f.id) }}" style="display: inline;" onsubmit="return confirm('Delete faculty member {{ f.name }} and their user account?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger btn-icon" title="Delete Faculty">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No faculty members registered.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Add Faculty Modal -->
+<div class="modal-backdrop" id="addFacultyModal">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3><i class="fas fa-user-tie" style="color: var(--primary);"></i> Add Faculty Member</h3>
+      <button type="button" class="modal-close" onclick="closeModal('addFacultyModal')">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('add_faculty') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="fac_name">Faculty Full Name *</label>
+          <input type="text" id="fac_name" name="name" class="form-control" placeholder="e.g. Dr. Alan Turing" required>
+        </div>
+        <div class="form-group">
+          <label for="fac_subject">Department / Subject Specialization</label>
+          <input type="text" id="fac_subject" name="subject" class="form-control" placeholder="e.g. Artificial Intelligence">
+        </div>
+        <div class="form-group">
+          <label for="fac_contact">Contact Email or Phone</label>
+          <input type="text" id="fac_contact" name="contact" class="form-control" placeholder="e.g. alan.t@school.edu">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="fac_username">Portal Username *</label>
+            <input type="text" id="fac_username" name="username" class="form-control" placeholder="e.g. prof_alan" required>
+          </div>
+          <div class="form-group">
+            <label for="fac_password">Password</label>
+            <input type="password" id="fac_password" name="password" class="form-control" placeholder="Default: faculty123">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addFacultyModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Faculty</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Faculty Modal -->
+<div class="modal-backdrop" id="editFacultyModal">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3><i class="fas fa-edit" style="color: var(--primary);"></i> Edit Faculty Details</h3>
+      <button type="button" class="modal-close" onclick="closeModal('editFacultyModal')">&times;</button>
+    </div>
+    <form id="editFacultyForm" method="POST" action="">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="edit_faculty_name">Faculty Full Name *</label>
+          <input type="text" id="edit_faculty_name" name="name" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="edit_faculty_subject">Specialization / Department</label>
+          <input type="text" id="edit_faculty_subject" name="subject" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="edit_faculty_contact">Contact Info</label>
+          <input type="text" id="edit_faculty_contact" name="contact" class="form-control">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('editFacultyModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Update</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

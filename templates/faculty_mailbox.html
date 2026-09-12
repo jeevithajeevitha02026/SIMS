@@ -1,0 +1,306 @@
+{% extends 'base.html' %}
+
+{% block title %}Faculty Mailbox - SIMS{% endblock %}
+{% block header_title %}Student Letters & Requests Mailbox{% endblock %}
+
+{% block content %}
+<!-- Header Bar with Filter Tabs -->
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-body">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">
+          <i class="fas fa-envelope-open-text" style="color: var(--primary);"></i> Student Letters Mailbox
+        </h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">
+          Review formal student applications for Leave, On Duty (OD), Apology, and special permissions.
+        </p>
+      </div>
+
+      <!-- Quick Filter Pills -->
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a href="{{ url_for('faculty_mailbox') }}" class="btn btn-sm {% if not selected_status %}btn-primary{% else %}btn-secondary{% endif %}">
+          All ({{ counts.total }})
+        </a>
+        <a href="{{ url_for('faculty_mailbox', status='Pending') }}" class="btn btn-sm {% if selected_status == 'Pending' %}btn-primary{% else %}btn-secondary{% endif %}" style="{% if counts.pending > 0 and selected_status != 'Pending' %}border-color: #f59e0b; color: #b45309;{% endif %}">
+          Pending ({{ counts.pending }})
+        </a>
+        <a href="{{ url_for('faculty_mailbox', status='Approved') }}" class="btn btn-sm {% if selected_status == 'Approved' %}btn-primary{% else %}btn-secondary{% endif %}">
+          Approved ({{ counts.approved }})
+        </a>
+        <a href="{{ url_for('faculty_mailbox', status='Declined') }}" class="btn btn-sm {% if selected_status == 'Declined' %}btn-primary{% else %}btn-secondary{% endif %}">
+          Declined ({{ counts.declined }})
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Metrics Cards -->
+<div class="metrics-grid">
+  <div class="metric-card">
+    <div class="metric-icon blue">
+      <i class="fas fa-inbox"></i>
+    </div>
+    <div class="metric-data">
+      <h3>{{ counts.total }}</h3>
+      <p>Total Letters Received</p>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon amber">
+      <i class="fas fa-exclamation-circle"></i>
+    </div>
+    <div class="metric-data">
+      <h3>{{ counts.pending }}</h3>
+      <p>Pending Your Review</p>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon green">
+      <i class="fas fa-check-circle"></i>
+    </div>
+    <div class="metric-data">
+      <h3>{{ counts.approved }}</h3>
+      <p>Letters Approved</p>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon red">
+      <i class="fas fa-times-circle"></i>
+    </div>
+    <div class="metric-data">
+      <h3>{{ counts.declined }}</h3>
+      <p>Letters Declined</p>
+    </div>
+  </div>
+</div>
+
+<!-- Letters Table -->
+<div class="card">
+  <div class="card-header">
+    <h2>
+      <i class="fas fa-mail-bulk" style="color: var(--accent);"></i>
+      {% if selected_status %}{{ selected_status }} Letters{% else %}All Student Letters{% endif %}
+    </h2>
+    <span style="font-size: 0.82rem; color: var(--text-muted);">
+      {{ letters | length }} letter(s) found
+    </span>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table filterable-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Type</th>
+            <th>Subject</th>
+            <th>Requested Dates</th>
+            <th>Received On</th>
+            <th>Status</th>
+            <th>Remarks</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for letter in letters %}
+            <tr style="{% if letter.status == 'Pending' %}background: #fffdf5;{% endif %}">
+              <td>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  {% if letter.photo_path %}
+                    <img src="{{ url_for('uploaded_file', filename=letter.photo_path) }}" style="width: 38px; height: 38px; border-radius: 999px; object-fit: cover;" alt="{{ letter.student_name }}">
+                  {% else %}
+                    <div style="width: 38px; height: 38px; border-radius: 999px; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">
+                      {{ letter.student_name[:1] | upper }}
+                    </div>
+                  {% endif %}
+                  <div>
+                    <strong style="color: var(--text-main);">{{ letter.student_name }}</strong>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">
+                      Roll: <strong>{{ letter.roll_no }}</strong> &bull; Class: <strong>{{ letter.class }}</strong>
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="badge" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;">
+                  <i class="fas {% if 'Leave' in letter.letter_type %}fa-calendar-minus{% elif 'OD' in letter.letter_type or 'Duty' in letter.letter_type %}fa-briefcase{% elif 'Apology' in letter.letter_type %}fa-hand-paper{% else %}fa-file-alt{% endif %}"></i>
+                  {{ letter.letter_type }}
+                </span>
+              </td>
+              <td>
+                <div style="font-weight: 600; color: var(--text-main);">{{ letter.subject }}</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  {{ letter.message }}
+                </div>
+              </td>
+              <td>
+                {% if letter.from_date %}
+                  <span style="font-size: 0.82rem;">
+                    <i class="far fa-calendar-alt" style="color: var(--accent);"></i>
+                    {{ letter.from_date }}{% if letter.to_date and letter.to_date != letter.from_date %} &rarr; {{ letter.to_date }}{% endif %}
+                  </span>
+                {% else %}
+                  <span style="color: var(--text-muted); font-size: 0.8rem;">N/A</span>
+                {% endif %}
+              </td>
+              <td>
+                <span style="font-size: 0.82rem; color: var(--text-muted);">
+                  {{ letter.created_at[:10] if letter.created_at else 'Recent' }}
+                </span>
+              </td>
+              <td>
+                {% if letter.status == 'Approved' %}
+                  <span class="badge badge-paid">
+                    <i class="fas fa-check"></i> Approved
+                  </span>
+                {% elif letter.status == 'Declined' %}
+                  <span class="badge badge-unpaid">
+                    <i class="fas fa-times"></i> Declined
+                  </span>
+                {% else %}
+                  <span class="badge badge-partial">
+                    <i class="fas fa-clock"></i> Pending
+                  </span>
+                {% endif %}
+              </td>
+              <td>
+                {% if letter.faculty_remark %}
+                  <span style="font-size: 0.8rem; color: var(--text-main); font-style: italic;">
+                    "{{ letter.faculty_remark }}"
+                  </span>
+                {% else %}
+                  <span style="color: var(--text-muted); font-size: 0.8rem;">None</span>
+                {% endif %}
+              </td>
+              <td style="text-align: right;">
+                <button type="button" class="btn btn-sm {% if letter.status == 'Pending' %}btn-primary{% else %}btn-secondary{% endif %}" onclick="openModal('reviewLetterModal_{{ letter.id }}')">
+                  {% if letter.status == 'Pending' %}
+                    <i class="fas fa-tasks"></i> Review & Respond
+                  {% else %}
+                    <i class="fas fa-eye"></i> View Letter
+                  {% endif %}
+                </button>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 3rem 1rem;">
+                <i class="fas fa-inbox" style="font-size: 2.5rem; color: #cbd5e1; display: block; margin-bottom: 0.75rem;"></i>
+                No student letters found in this category.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+{% for letter in letters %}
+<!-- Review & Action Modal for Each Letter -->
+<div class="modal-backdrop" id="reviewLetterModal_{{ letter.id }}">
+  <div class="modal-dialog" style="max-width: 700px;">
+    <div class="modal-header">
+      <h3>
+        <i class="fas fa-envelope-open" style="color: var(--primary);"></i>
+        Review Letter: {{ letter.letter_type }}
+      </h3>
+      <button type="button" class="modal-close" onclick="closeModal('reviewLetterModal_{{ letter.id }}')">&times;</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('respond_letter', letter_id=letter.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-body" style="padding: 1.5rem 2rem;">
+
+        <!-- Official Letter Layout Preview -->
+        <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; background: #fafafa; font-family: 'Times New Roman', Times, serif; color: #1e293b; line-height: 1.6; margin-bottom: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #cbd5e1; padding-bottom: 0.75rem; margin-bottom: 1rem;">
+            <div>
+              <div style="font-weight: bold; font-size: 1.05rem; text-transform: uppercase;">Student Letter / Application</div>
+              <div style="font-size: 0.85rem; color: #475569;">Ref: #LTR-{{ letter.id }} &bull; Category: <strong>{{ letter.letter_type }}</strong></div>
+            </div>
+            <div style="text-align: right; font-size: 0.85rem; color: #475569;">
+              <div>Date: <strong>{{ letter.created_at[:10] if letter.created_at else '' }}</strong></div>
+              <div>Status: <strong>{{ letter.status }}</strong></div>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 0.75rem; font-size: 0.95rem;">
+            <strong>From:</strong><br>
+            {{ letter.student_name }}<br>
+            Roll No: <strong>{{ letter.roll_no }}</strong> | Class: <strong>{{ letter.class }}</strong><br>
+            {% if letter.contact %}Contact: {{ letter.contact }}<br>{% endif %}
+          </div>
+
+          <div style="margin-bottom: 1rem; font-size: 0.95rem;">
+            <strong>To:</strong><br>
+            The Respected Faculty Member / Class Advisor
+          </div>
+
+          <div style="margin-bottom: 0.75rem; font-size: 0.95rem; font-weight: bold; border-left: 3px solid #1e3a8a; padding-left: 0.5rem;">
+            Sub: {{ letter.subject }}
+          </div>
+
+          {% if letter.from_date %}
+            <div style="margin-bottom: 1rem; font-size: 0.88rem; background: #e0f2fe; padding: 0.4rem 0.6rem; border-radius: 4px; color: #0369a1;">
+              <i class="far fa-calendar-alt"></i> <strong>Duration / Dates Requested:</strong>
+              {{ letter.from_date }}{% if letter.to_date and letter.to_date != letter.from_date %} to {{ letter.to_date }}{% endif %}
+            </div>
+          {% endif %}
+
+          <div style="white-space: pre-wrap; margin-bottom: 1.25rem; font-size: 0.98rem; text-align: justify; padding: 0.5rem 0;">{{ letter.message }}</div>
+
+          <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px dashed #cbd5e1; padding-top: 0.75rem;">
+            <div>
+              <div style="font-size: 0.75rem; color: #64748b;">Submitted by:</div>
+              <div style="font-family: cursive; font-size: 1.05rem; color: #1e3a8a;">{{ letter.student_name }}</div>
+            </div>
+            <div style="text-align: right;">
+              {% if letter.status == 'Approved' %}
+                <div style="font-weight: 700; color: #059669; font-size: 1rem; border: 2px solid #059669; padding: 0.15rem 0.5rem; border-radius: 4px; display: inline-block;">
+                  APPROVED
+                </div>
+              {% elif letter.status == 'Declined' %}
+                <div style="font-weight: 700; color: #dc2626; font-size: 1rem; border: 2px solid #dc2626; padding: 0.15rem 0.5rem; border-radius: 4px; display: inline-block;">
+                  DECLINED
+                </div>
+              {% else %}
+                <div style="font-weight: 600; color: #d97706; font-size: 0.9rem;">
+                  AWAITING DECISION
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Faculty Decision Response Controls -->
+        <div class="form-group">
+          <label for="faculty_remark_{{ letter.id }}">Faculty Feedback / Remarks</label>
+          <textarea id="faculty_remark_{{ letter.id }}" name="faculty_remark" class="form-control" rows="2" placeholder="Optional remark (e.g. Approved. Please make sure to collect class notes upon return.)">{{ letter.faculty_remark or '' }}</textarea>
+          <span class="form-help">This feedback will be visible to the student on their portal.</span>
+        </div>
+
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('reviewLetterModal_{{ letter.id }}')">Close</button>
+        <div style="display: flex; gap: 0.75rem;">
+          <button type="submit" name="action" value="Declined" class="btn btn-danger" onclick="return confirm('Decline this student application?');">
+            <i class="fas fa-times"></i> Decline
+          </button>
+          <button type="submit" name="action" value="Approved" class="btn" style="background: #10b981; color: #ffffff;">
+            <i class="fas fa-check"></i> Approve
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

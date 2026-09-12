@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+
+{% block title %}Attendance - SIMS{% endblock %}
+{% block header_title %}Attendance Management{% endblock %}
+
+{% block content %}
+
+{% if student_mode %}
+  <!-- ===================================================================== -->
+  <!-- STUDENT ATTENDANCE VIEW                                               -->
+  <!-- ===================================================================== -->
+
+  <!-- Top Metrics -->
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-icon {% if overall_pct >= 75 %}green{% elif overall_pct >= 60 %}amber{% else %}red{% endif %}">
+        <i class="fas fa-percentage"></i>
+      </div>
+      <div class="metric-data">
+        <h3>{{ overall_pct }}%</h3>
+        <p>Overall Attendance Rate</p>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-icon teal">
+        <i class="fas fa-calendar-check"></i>
+      </div>
+      <div class="metric-data">
+        <h3>{{ total_attended }}</h3>
+        <p>Total Classes Attended</p>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-icon blue">
+        <i class="fas fa-history"></i>
+      </div>
+      <div class="metric-data">
+        <h3>{{ total_sessions }}</h3>
+        <p>Total Sessions Held</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subject-wise Breakdown Table -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-book-reader" style="color: var(--primary);"></i> Subject-Wise Attendance Breakdown</h2>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Course</th>
+              <th>Total Classes</th>
+              <th>Attended</th>
+              <th>Absent</th>
+              <th>Percentage</th>
+              <th style="text-align: right;">Eligibility Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in subject_stats %}
+              {% set pct = ((s.attended_sessions / (s.total_sessions or 1)) * 100) | round(1) if s.total_sessions > 0 else 0 %}
+              <tr>
+                <td><strong>{{ s.course_name }}</strong></td>
+                <td>{{ s.total_sessions }}</td>
+                <td><strong style="color: var(--success);">{{ s.attended_sessions }}</strong></td>
+                <td><strong style="color: var(--danger);">{{ s.absent_sessions }}</strong></td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="width: 100px; height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden;">
+                      <div style="width: {{ pct }}%; height: 100%; background: {% if pct >= 75 %}var(--success){% elif pct >= 60 %}var(--warning){% else %}var(--danger){% endif %}; border-radius: 999px;"></div>
+                    </div>
+                    <strong>{{ pct }}%</strong>
+                  </div>
+                </td>
+                <td style="text-align: right;">
+                  {% if pct >= 75 %}
+                    <span class="badge badge-paid"><i class="fas fa-check"></i> Eligible</span>
+                  {% elif pct >= 60 %}
+                    <span class="badge badge-partial"><i class="fas fa-exclamation-triangle"></i> Warning</span>
+                  {% else %}
+                    <span class="badge badge-unpaid"><i class="fas fa-times"></i> Critical Shortage</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No courses registered.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Daily Attendance History -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-history" style="color: var(--accent);"></i> Daily Attendance History Log</h2>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Course</th>
+              <th style="text-align: right;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in attendance_logs %}
+              <tr>
+                <td><strong>{{ log.date }}</strong></td>
+                <td>{{ log.course_name }}</td>
+                <td style="text-align: right;">
+                  {% if log.status == 'Present' %}
+                    <span class="badge badge-present"><i class="fas fa-check"></i> Present</span>
+                  {% elif log.status == 'Absent' %}
+                    <span class="badge badge-absent"><i class="fas fa-times"></i> Absent</span>
+                  {% elif log.status == 'Late' %}
+                    <span class="badge badge-late"><i class="fas fa-clock"></i> Late</span>
+                  {% else %}
+                    <span class="badge badge-excused"><i class="fas fa-info-circle"></i> {{ log.status }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 2rem;">No attendance recorded yet.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+{% else %}
+  <!-- ===================================================================== -->
+  <!-- FACULTY / ADMIN ATTENDANCE MARKING VIEW                               -->
+  <!-- ===================================================================== -->
+
+  <!-- Course & Date Filter Bar -->
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body">
+      <form method="GET" action="{{ url_for('faculty_attendance') }}" class="filter-bar" style="margin-bottom: 0;">
+        <div style="flex: 1; min-width: 250px;">
+          <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Course Subject:</label>
+          <select name="course_id" class="filter-select" style="width: 100%;" onchange="this.form.submit()">
+            {% for c in courses %}
+              <option value="{{ c.id }}" {% if selected_course_id == c.id %}selected{% endif %}>
+                {{ c.name }} ({{ c.class }})
+              </option>
+            {% else %}
+              <option value="">No courses assigned</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Attendance Date:</label>
+          <input type="date" name="date" value="{{ selected_date }}" class="form-control" style="padding: 0.5rem 0.85rem;" onchange="this.form.submit()">
+        </div>
+
+        <div style="align-self: flex-end;">
+          <button type="submit" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Load Roster</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if current_course %}
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2><i class="fas fa-clipboard-check" style="color: var(--primary);"></i> Daily Roster: {{ current_course.name }}</h2>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">
+            Class: <strong>{{ current_course.class }}</strong> &bull; Date: <strong>{{ selected_date }}</strong> &bull; Total Students: <strong>{{ students_roster | length }}</strong>
+          </span>
+        </div>
+
+        <!-- Quick Mass Marking Buttons -->
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="markAllAttendance('Present')">
+            <i class="fas fa-check-double" style="color: var(--success);"></i> All Present
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="markAllAttendance('Absent')">
+            <i class="fas fa-times-circle" style="color: var(--danger);"></i> All Absent
+          </button>
+        </div>
+      </div>
+
+      <div class="card-body" style="padding: 0;">
+        <form method="POST" action="{{ url_for('faculty_attendance') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="course_id" value="{{ current_course.id }}">
+          <input type="hidden" name="date" value="{{ selected_date }}">
+
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Roll No</th>
+                  <th>Student Name</th>
+                  <th>Class</th>
+                  <th style="text-align: center; width: 340px;">Attendance Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for s in students_roster %}
+                  <tr>
+                    <td><code>{{ s.roll_no }}</code></td>
+                    <td>
+                      <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        {% if s.photo_path %}
+                          <img src="{{ url_for('uploaded_file', filename=s.photo_path) }}" class="student-avatar" alt="{{ s.name }}">
+                        {% else %}
+                          <div class="avatar-initials">{{ s.name[:1] | upper }}</div>
+                        {% endif %}
+                        <span style="font-weight: 600;">{{ s.name }}</span>
+                      </div>
+                    </td>
+                    <td><span class="badge" style="background: #eff6ff; color: #1e40af;">{{ s.class }}</span></td>
+                    <td style="text-align: center;">
+                      <div class="attendance-options">
+                        <label class="attendance-radio-btn p">
+                          <input type="radio" name="status_{{ s.id }}" value="Present" {% if s.attendance_status == 'Present' %}checked{% endif %}>
+                          <span><i class="fas fa-check"></i> Present</span>
+                        </label>
+                        <label class="attendance-radio-btn a">
+                          <input type="radio" name="status_{{ s.id }}" value="Absent" {% if s.attendance_status == 'Absent' %}checked{% endif %}>
+                          <span><i class="fas fa-times"></i> Absent</span>
+                        </label>
+                        <label class="attendance-radio-btn l">
+                          <input type="radio" name="status_{{ s.id }}" value="Late" {% if s.attendance_status == 'Late' %}checked{% endif %}>
+                          <span><i class="fas fa-clock"></i> Late</span>
+                        </label>
+                      </div>
+                    </td>
+                  </tr>
+                {% else %}
+                  <tr>
+                    <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
+                      No students enrolled in class {{ current_course.class }}.
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          {% if students_roster %}
+            <div style="padding: 1.25rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; background: #f8fafc;">
+              <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem;">
+                <i class="fas fa-save"></i> Save Attendance Records
+              </button>
+            </div>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  {% else %}
+    <div class="card">
+      <div class="card-body" style="text-align: center; padding: 3rem;">
+        <i class="fas fa-clipboard-list" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem; display: block;"></i>
+        <h3>No Course Selected</h3>
+        <p style="color: var(--text-muted);">Please select an assigned course from above to record student attendance.</p>
+      </div>
+    </div>
+  {% endif %}
+
+{% endif %}
+
+{% endblock %}

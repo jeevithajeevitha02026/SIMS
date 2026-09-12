@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}500 - Server Error - SIMS{% endblock %}
+{% block header_title %}Server Error{% endblock %}
+
+{% block content %}
+<div class="card" style="text-align: center; padding: 4rem 2rem; max-width: 600px; margin: 2rem auto; border-radius: var(--radius-md);">
+  <div style="font-size: 4rem; color: #ef4444; margin-bottom: 1rem;">
+    <i class="fas fa-exclamation-triangle"></i>
+  </div>
+  <h2 style="font-size: 1.75rem; color: var(--text-main); margin-bottom: 0.5rem; font-weight: 700;">500 - Internal Server Error</h2>
+  <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">
+    An unexpected error occurred while processing your request. Please try again in a few moments or contact the administrator.
+  </p>
+  <div>
+    {% if current_user %}
+      <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+        <i class="fas fa-home"></i> Return to Dashboard
+      </a>
+    {% else %}
+      <a href="{{ url_for('login') }}" class="btn btn-primary">
+        <i class="fas fa-sign-in-alt"></i> Go to Login
+      </a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

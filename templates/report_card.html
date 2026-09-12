@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Academic Report Card - {{ student.name }} ({{ student.roll_no }})</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body style="background: #f1f5f9; padding: 2rem 1rem;">
+
+  <!-- Non-printable top action bar -->
+  <div class="no-print" style="max-width: 860px; margin: 0 auto 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-left"></i> Back to Portal
+    </a>
+    <button type="button" class="btn btn-primary" onclick="window.print()" style="box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);">
+      <i class="fas fa-print"></i> Print / Save as PDF
+    </button>
+  </div>
+
+  <!-- Printable Report Document -->
+  <div class="report-card-container">
+
+    <!-- Header & Seal -->
+    <div class="report-header">
+      <div style="text-align: center; margin-bottom: 0.85rem;">
+        <img src="{{ url_for('static', filename='images/clglogo.jpg') }}" alt="College Logo" style="max-height: 85px; width: auto; object-fit: contain; display: inline-block;">
+      </div>
+      <h1>ARIGNAR ANNA GOVERNMENT ARTS COLLEGE, VILLUPURAM</h1>
+      <p>Affiliated to Annamali University &bull; Accredited Grade 'A'</p>
+      <!-- <p style="font-size: 0.8rem; color: #64748b;">128 Academic Way, Cambridge, MA 02138 &bull; sims.mit-edu.org</p> -->
+      <div class="report-title-badge">OFFICIAL ACADEMIC TRANSCRIPT & PERFORMANCE RECORD</div>
+    </div>
+
+    <!-- Student Bio Grid -->
+    <div class="student-info-grid">
+      <table class="info-table">
+        <tr>
+          <td class="info-label">Student Name:</td>
+          <td><strong>{{ student.name }}</strong></td>
+        </tr>
+        <tr>
+          <td class="info-label">Roll Number:</td>
+          <td><code>{{ student.roll_no }}</code></td>
+        </tr>
+        <tr>
+          <td class="info-label">Class / Cohort:</td>
+          <td><strong>{{ student.class }}</strong></td>
+        </tr>
+        <tr>
+          <td class="info-label">Date of Birth:</td>
+          <td>{{ student.dob or 'Not Specified' }}</td>
+        </tr>
+      </table>
+
+      <table class="info-table">
+        <tr>
+          <td class="info-label">Issue Date:</td>
+          <td>{{ issue_date }}</td>
+        </tr>
+        <tr>
+          <td class="info-label">Academic Status:</td>
+          <td><span style="color: var(--success); font-weight: 700;">GOOD STANDING</span></td>
+        </tr>
+        <tr>
+          <td class="info-label">Attendance:</td>
+          <td><strong>{{ attendance_pct }}%</strong> ({{ attended_classes }}/{{ total_classes }} classes)</td>
+        </tr>
+        <tr>
+          <td class="info-label">Semester GPA:</td>
+          <td><strong style="color: var(--primary); font-size: 1.1rem;">{{ gpa }} / 4.0</strong></td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Marks Table -->
+    <table class="custom-table" style="margin-bottom: 2rem;">
+      <thead>
+        <tr style="background: #0f172a; color: #ffffff;">
+          <th style="background: #0f172a; color: #ffffff;">Course Title</th>
+          <th style="background: #0f172a; color: #ffffff;">Exam / Evaluation</th>
+          <th style="background: #0f172a; color: #ffffff; text-align: center;">Max Marks</th>
+          <th style="background: #0f172a; color: #ffffff; text-align: center;">Marks Scored</th>
+          <th style="background: #0f172a; color: #ffffff; text-align: center;">Percentage</th>
+          <th style="background: #0f172a; color: #ffffff; text-align: center;">Grade</th>
+          <th style="background: #0f172a; color: #ffffff; text-align: right;">Remarks</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in marks %}
+          <tr>
+            <td><strong>{{ m.course_name }}</strong></td>
+            <td>{{ m.exam_name }}</td>
+            <td style="text-align: center;">{{ m.total_marks }}</td>
+            <td style="text-align: center; font-weight: 700; color: var(--primary);">{{ m.marks_obtained }}</td>
+            <td style="text-align: center;">{{ m.percentage }}%</td>
+            <td style="text-align: center;">
+              <strong>{{ m.grade }}</strong>
+            </td>
+            <td style="text-align: right; font-size: 0.82rem; color: var(--text-muted);">{{ m.remark }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+              No marks entered for this academic term.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      {% if marks %}
+        <tfoot>
+          <tr style="background: #f8fafc; font-weight: 700;">
+            <td colspan="2">AGGREGATE TOTAL</td>
+            <td style="text-align: center;">{{ total_max }}</td>
+            <td style="text-align: center; color: var(--primary);">{{ total_obtained }}</td>
+            <td style="text-align: center;">{{ overall_pct }}%</td>
+            <td style="text-align: center; color: var(--success); font-size: 1.1rem;">{{ overall_grade }}</td>
+            <td style="text-align: right; color: var(--success);">{{ final_remark }}</td>
+          </tr>
+        </tfoot>
+      {% endif %}
+    </table>
+
+    <!-- Grading Scale Legend & Signatures -->
+    <div style="font-size: 0.76rem; color: #64748b; background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 2rem;">
+      <strong>Grading Key:</strong> A+ (90-100%, 4.0 GPA) &bull; A (80-89%, 3.7 GPA) &bull; B+ (70-79%, 3.3 GPA) &bull; B (60-69%, 3.0 GPA) &bull; C (50-59%, 2.0 GPA) &bull; D (40-49%, 1.0 Pass) &bull; F (<40%, 0.0 Fail)
+    </div>
+
+    <!-- Official Signatures -->
+    <div class="signatures-section">
+      <div class="signature-box">
+        <div class="signature-line"></div>
+        <span>Class Advisor</span>
+      </div>
+
+      <div class="signature-box">
+        <div class="signature-line"></div>
+        <span>Controller of Examinations</span>
+      </div>
+
+      <div class="signature-box">
+        <div class="signature-line"></div>
+        <span>Dean / Principal</span>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

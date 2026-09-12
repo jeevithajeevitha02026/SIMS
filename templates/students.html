@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Management - SIMS{% endblock %}
+{% block header_title %}Student Directory{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h2><i class="fas fa-user-graduate" style="color: var(--primary);"></i> Registered Students ({{ students | length }})</h2>
+    <button type="button" class="btn btn-primary" onclick="openModal('addStudentModal')">
+      <i class="fas fa-plus"></i> Add New Student
+    </button>
+  </div>
+
+  <div class="card-body">
+    <!-- Search & Filter Controls -->
+    <form method="GET" action="{{ url_for('admin_students') }}" class="filter-bar">
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input type="text" name="q" value="{{ search_query }}" placeholder="Search by name, roll number, contact...">
+      </div>
+
+      <select name="class" class="filter-select" onchange="this.form.submit()">
+        <option value="">All Classes</option>
+        {% for c in classes %}
+          <option value="{{ c.class }}" {% if selected_class == c.class %}selected{% endif %}>{{ c.class }}</option>
+        {% endfor %}
+      </select>
+
+      <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+      {% if search_query or selected_class %}
+        <a href="{{ url_for('admin_students') }}" class="btn btn-secondary btn-sm">Clear</a>
+      {% endif %}
+    </form>
+
+    <!-- Students Table -->
+    <div class="table-responsive">
+      <table class="custom-table filterable-table">
+        <thead>
+          <tr>
+            <th>Photo</th>
+            <th>Name</th>
+            <th>Roll No</th>
+            <th>Class</th>
+            <th>Contact</th>
+            <th>Date of Birth</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in students %}
+            <tr>
+              <td style="width: 50px;">
+                {% if s.photo_path %}
+                  <img src="{{ url_for('uploaded_file', filename=s.photo_path) }}" class="student-avatar" alt="{{ s.name }}">
+                {% else %}
+                  <div class="avatar-initials">{{ s.name[:1] | upper }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <div style="font-weight: 600; color: var(--text-main);">{{ s.name }}</div>
+                <div style="font-size: 0.76rem; color: var(--text-muted);">{{ s.address or 'No address recorded' }}</div>
+              </td>
+              <td><code>{{ s.roll_no }}</code></td>
+              <td><span class="badge" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;">{{ s.class }}</span></td>
+              <td>{{ s.contact or '-' }}</td>
+              <td>{{ s.dob or '-' }}</td>
+              <td style="text-align: right;">
+                <div class="action-btns" style="justify-content: flex-end;">
+                  <!-- View Report Card Link -->
+                  <a href="{{ url_for('report_card', student_id=s.id) }}" class="btn btn-secondary btn-icon" title="View Official Report Card" target="_blank">
+                    <i class="fas fa-file-invoice"></i>
+                  </a>
+                  <!-- Edit Student Button -->
+                  <button type="button" class="btn btn-secondary btn-icon" title="Edit Student" 
+                          onclick="editStudentModal({{ s.id }}, '{{ s.name | escape }}', '{{ s.roll_no | escape }}', '{{ s.class | escape }}', '{{ s.dob or '' }}', '{{ s.contact or '' }}', '{{ (s.address or '') | escape }}')">
+                    <i class="fas fa-pencil-alt"></i>
+                  </button>
+                  <!-- Delete Student Form -->
+                  <form method="POST" action="{{ url_for('delete_student', student_id=s.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete {{ s.name }}? This will also remove attendance, marks, and user account.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger btn-icon" title="Delete Student">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
+                <i class="fas fa-folder-open" style="font-size: 2rem; color: #cbd5e1; display: block; margin-bottom: 0.5rem;"></i>
+                No students found matching your criteria.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Add Student Modal -->
+<div class="modal-backdrop" id="addStudentModal">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3><i class="fas fa-user-plus" style="color: var(--primary);"></i> Add New Student</h3>
+      <button type="button" class="modal-close" onclick="closeModal('addStudentModal')">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('add_student') }}" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="name">Full Name *</label>
+            <input type="text" id="name" name="name" class="form-control" placeholder="e.g. John Doe" required>
+          </div>
+          <div class="form-group">
+            <label for="roll_no">Roll Number / Student ID *</label>
+            <input type="text" id="roll_no" name="roll_no" class="form-control" placeholder="e.g. CS202605" required>
+            <span class="form-help">Will also be used as the student's login username.</span>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="class">Class / Cohort *</label>
+            <input type="text" id="class" name="class" class="form-control" placeholder="e.g. CS-Year1" required>
+          </div>
+          <div class="form-group">
+            <label for="dob">Date of Birth</label>
+            <input type="date" id="dob" name="dob" class="form-control">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="contact">Phone Contact</label>
+            <input type="text" id="contact" name="contact" class="form-control" placeholder="+1 555-0199">
+          </div>
+          <div class="form-group">
+            <label for="password">Initial Password</label>
+            <input type="password" id="password" name="password" class="form-control" placeholder="Default: student123">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="address">Residential Address</label>
+          <textarea id="address" name="address" class="form-control" rows="2" placeholder="Street address, City, Zip"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="photo">Student Photo</label>
+          <input type="file" id="photo" name="photo" class="form-control" accept="image/png, image/jpeg, image/webp">
+          <span class="form-help">Optional: PNG, JPG, or WEBP (Max 2MB).</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addStudentModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Student</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Student Modal -->
+<div class="modal-backdrop" id="editStudentModal">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3><i class="fas fa-user-edit" style="color: var(--primary);"></i> Edit Student Details</h3>
+      <button type="button" class="modal-close" onclick="closeModal('editStudentModal')">&times;</button>
+    </div>
+    <form id="editStudentForm" method="POST" action="" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit_student_name">Full Name *</label>
+            <input type="text" id="edit_student_name" name="name" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="edit_student_roll_no">Roll Number (Read-only)</label>
+            <input type="text" id="edit_student_roll_no" class="form-control" readonly>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit_student_class">Class *</label>
+            <input type="text" id="edit_student_class" name="class" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="edit_student_dob">Date of Birth</label>
+            <input type="date" id="edit_student_dob" name="dob" class="form-control">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="edit_student_contact">Contact Number</label>
+          <input type="text" id="edit_student_contact" name="contact" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label for="edit_student_address">Address</label>
+          <textarea id="edit_student_address" name="address" class="form-control" rows="2"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="edit_photo">Update Photo (Optional)</label>
+          <input type="file" id="edit_photo" name="photo" class="form-control" accept="image/png, image/jpeg, image/webp">
+          <span class="form-help">Leave empty to retain existing profile photo.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('editStudentModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Update Student</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

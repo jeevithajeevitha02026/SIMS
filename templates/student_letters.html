@@ -1,0 +1,336 @@
+{% extends 'base.html' %}
+
+{% block title %}Letters & Requests - SIMS{% endblock %}
+{% block header_title %}Student Letters & Requests{% endblock %}
+
+{% block content %}
+<!-- Page Header & Action Bar -->
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-body">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">
+          <i class="fas fa-envelope-open-text" style="color: var(--primary);"></i> Student Letters & Permission System
+        </h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">
+          Submit formal leave applications, OD (On Duty) letters, apology notes, and permission requests to your faculty.
+        </p>
+      </div>
+      <div>
+        <button type="button" class="btn btn-primary" onclick="openModal('writeLetterModal')">
+          <i class="fas fa-pen-fancy"></i> Compose New Letter
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Metrics Cards -->
+<div class="metrics-grid">
+  <div class="metric-card">
+    <div class="metric-icon blue">
+      <i class="fas fa-paper-plane"></i>
+    </div>
+    <div class="metric-data">
+      <h3>{{ stats.total }}</h3>
+      <p>Total Letters Sent</p>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon amber">
+      <i class="fas fa-hourglass-half"></i>
+    </div>
+    <div class="metric-data">
+      <h3>{{ stats.pending }}</h3>
+      <p>Pending Approval</p>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon green">
+      <i class="fas fa-check-circle"></i>
+    </div>
+    <div class="metric-data">
+      <h3>{{ stats.approved }}</h3>
+      <p>Approved Requests</p>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon red">
+      <i class="fas fa-times-circle"></i>
+    </div>
+    <div class="metric-data">
+      <h3>{{ stats.declined }}</h3>
+      <p>Declined Requests</p>
+    </div>
+  </div>
+</div>
+
+<!-- Letters History Table -->
+<div class="card">
+  <div class="card-header">
+    <h2><i class="fas fa-history" style="color: var(--primary);"></i> My Submitted Letters & Applications</h2>
+    <span style="font-size: 0.82rem; color: var(--text-muted);">Showing all submissions</span>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table filterable-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Recipient Faculty</th>
+            <th>Subject</th>
+            <th>Dates / Duration</th>
+            <th>Submitted On</th>
+            <th>Status</th>
+            <th>Faculty Remarks</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for letter in letters %}
+            <tr>
+              <td>
+                <span class="badge" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;">
+                  <i class="fas {% if 'Leave' in letter.letter_type %}fa-calendar-minus{% elif 'OD' in letter.letter_type or 'Duty' in letter.letter_type %}fa-briefcase{% elif 'Apology' in letter.letter_type %}fa-hand-paper{% else %}fa-file-alt{% endif %}"></i>
+                  {{ letter.letter_type }}
+                </span>
+              </td>
+              <td>
+                <strong>{{ letter.faculty_name }}</strong>
+                {% if letter.faculty_dept %}
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">{{ letter.faculty_dept }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <span style="font-weight: 600; color: var(--text-main);">{{ letter.subject }}</span>
+              </td>
+              <td>
+                {% if letter.from_date %}
+                  <span style="font-size: 0.82rem;">
+                    <i class="far fa-calendar-alt" style="color: var(--accent);"></i>
+                    {{ letter.from_date }}{% if letter.to_date and letter.to_date != letter.from_date %} &rarr; {{ letter.to_date }}{% endif %}
+                  </span>
+                {% else %}
+                  <span style="color: var(--text-muted); font-size: 0.8rem;">N/A</span>
+                {% endif %}
+              </td>
+              <td>
+                <span style="font-size: 0.82rem; color: var(--text-muted);">
+                  {{ letter.created_at[:10] if letter.created_at else 'Recent' }}
+                </span>
+              </td>
+              <td>
+                {% if letter.status == 'Approved' %}
+                  <span class="badge badge-paid">
+                    <i class="fas fa-check"></i> Approved
+                  </span>
+                {% elif letter.status == 'Declined' %}
+                  <span class="badge badge-unpaid">
+                    <i class="fas fa-times"></i> Declined
+                  </span>
+                {% else %}
+                  <span class="badge badge-partial">
+                    <i class="fas fa-clock"></i> Pending
+                  </span>
+                {% endif %}
+              </td>
+              <td>
+                {% if letter.faculty_remark %}
+                  <span style="font-size: 0.82rem; color: var(--text-main); font-style: italic;">
+                    "{{ letter.faculty_remark }}"
+                  </span>
+                {% else %}
+                  <span style="color: var(--text-muted); font-size: 0.8rem;">No remarks yet</span>
+                {% endif %}
+              </td>
+              <td style="text-align: right;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openModal('viewLetterModal_{{ letter.id }}')">
+                  <i class="fas fa-eye"></i> View Letter
+                </button>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 3rem 1rem;">
+                <i class="fas fa-folder-open" style="font-size: 2.5rem; color: #cbd5e1; display: block; margin-bottom: 0.75rem;"></i>
+                No letters or applications written yet.<br>
+                <button type="button" class="btn btn-primary btn-sm" style="margin-top: 1rem;" onclick="openModal('writeLetterModal')">
+                  <i class="fas fa-pen-fancy"></i> Compose Your First Letter
+                </button>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Compose Letter Modal -->
+<div class="modal-backdrop" id="writeLetterModal">
+  <div class="modal-dialog" style="max-width: 650px;">
+    <div class="modal-header">
+      <h3><i class="fas fa-pen-fancy" style="color: var(--primary);"></i> Compose Letter to Faculty</h3>
+      <button type="button" class="modal-close" onclick="closeModal('writeLetterModal')">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('student_letters') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="letter_faculty">To (Faculty / Advisor) *</label>
+            <select id="letter_faculty" name="faculty_id" class="form-control" required>
+              <option value="">-- Select Faculty Recipient --</option>
+              {% for f in faculty_list %}
+                <option value="{{ f.id }}">{{ f.name }} ({{ f.subject or 'Faculty' }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="letter_type">Letter Purpose / Category *</label>
+            <select id="letter_type" name="letter_type" class="form-control" required onchange="handleLetterTypeChange(this.value)">
+              <option value="Leave Request">Leave Request (Sick / Medical / Personal)</option>
+              <option value="On Duty (OD)">On Duty (OD) Request (Symposium / Sports / Event)</option>
+              <option value="Apology Letter">Apology Letter (Attendance / Conduct)</option>
+              <option value="Permission Request">Permission Request (Lab / Library / Early Leave)</option>
+              <option value="General Letter">General Letter / Other Purpose</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row" id="datesRow">
+          <div class="form-group">
+            <label for="from_date">From Date</label>
+            <input type="date" id="from_date" name="from_date" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="to_date">To Date (Leave / OD)</label>
+            <input type="date" id="to_date" name="to_date" class="form-control">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="subject">Subject Line *</label>
+          <input type="text" id="subject" name="subject" class="form-control" placeholder="e.g. Application for 2 days medical leave" required>
+        </div>
+
+        <div class="form-group">
+          <label for="message">Letter Content / Reason *</label>
+          <textarea id="message" name="message" class="form-control" rows="6" placeholder="Respected Sir/Madam,&#10;&#10;I am writing this letter to respectfully request...&#10;&#10;Thanking you,&#10;Yours obediently,&#10;{{ student.name }}" required></textarea>
+          <span class="form-help">Write a clear and respectful formal letter explaining your request or circumstances.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('writeLetterModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Send Letter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- View Letter Detail Modals -->
+{% for letter in letters %}
+<div class="modal-backdrop" id="viewLetterModal_{{ letter.id }}">
+  <div class="modal-dialog" style="max-width: 650px;">
+    <div class="modal-header">
+      <h3><i class="fas fa-envelope-open" style="color: var(--primary);"></i> {{ letter.letter_type }}</h3>
+      <button type="button" class="modal-close" onclick="closeModal('viewLetterModal_{{ letter.id }}')">&times;</button>
+    </div>
+    <div class="modal-body" style="background: #ffffff; padding: 2rem;">
+      <!-- Letterhead Paper Simulation -->
+      <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; background: #fafafa; font-family: 'Times New Roman', Times, serif; color: #1e293b; line-height: 1.6;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #cbd5e1; padding-bottom: 1rem; margin-bottom: 1.25rem;">
+          <div>
+            <div style="font-weight: bold; font-size: 1.1rem; text-transform: uppercase;">Student Letter / Application</div>
+            <div style="font-size: 0.9rem; color: #475569;">Type: <strong>{{ letter.letter_type }}</strong></div>
+          </div>
+          <div style="text-align: right; font-size: 0.85rem; color: #475569;">
+            <div>Date: <strong>{{ letter.created_at[:10] if letter.created_at else '' }}</strong></div>
+            <div>Ref ID: #LTR-{{ letter.id }}</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem; font-size: 0.95rem;">
+          <strong>From:</strong><br>
+          {{ student.name }}<br>
+          Roll No: {{ student.roll_no }}<br>
+          Class: {{ student.class }}
+        </div>
+
+        <div style="margin-bottom: 1.25rem; font-size: 0.95rem;">
+          <strong>To:</strong><br>
+          {{ letter.faculty_name }}<br>
+          {{ letter.faculty_dept or 'Department Faculty' }}
+        </div>
+
+        <div style="margin-bottom: 1rem; font-size: 1rem; font-weight: bold; border-left: 3px solid #1e3a8a; padding-left: 0.5rem;">
+          Sub: {{ letter.subject }}
+        </div>
+
+        {% if letter.from_date %}
+          <div style="margin-bottom: 1rem; font-size: 0.9rem; background: #e0f2fe; padding: 0.5rem 0.75rem; border-radius: 4px; color: #0369a1;">
+            <i class="far fa-calendar-alt"></i> <strong>Period / Date Requested:</strong>
+            {{ letter.from_date }}{% if letter.to_date and letter.to_date != letter.from_date %} to {{ letter.to_date }}{% endif %}
+          </div>
+        {% endif %}
+
+        <div style="white-space: pre-wrap; margin-bottom: 1.5rem; font-size: 0.98rem; text-align: justify;">{{ letter.message }}</div>
+
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 2rem; border-top: 1px dashed #cbd5e1; padding-top: 1rem;">
+          <div>
+            <div style="font-size: 0.8rem; color: #64748b;">Applicant Signature:</div>
+            <div style="font-family: cursive; font-size: 1.1rem; color: #1e3a8a;">{{ student.name }}</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.8rem; color: #64748b;">Status:</div>
+            {% if letter.status == 'Approved' %}
+              <div style="font-weight: 700; color: #059669; font-size: 1.1rem; border: 2px solid #059669; padding: 0.2rem 0.6rem; border-radius: 4px; display: inline-block; transform: rotate(-5deg);">
+                APPROVED
+              </div>
+            {% elif letter.status == 'Declined' %}
+              <div style="font-weight: 700; color: #dc2626; font-size: 1.1rem; border: 2px solid #dc2626; padding: 0.2rem 0.6rem; border-radius: 4px; display: inline-block; transform: rotate(-5deg);">
+                DECLINED
+              </div>
+            {% else %}
+              <div style="font-weight: 600; color: #d97706; font-size: 0.95rem;">
+                PENDING REVIEW
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if letter.faculty_remark %}
+          <div style="margin-top: 1.25rem; background: #f1f5f9; padding: 0.75rem 1rem; border-radius: 6px; border-left: 3px solid #64748b;">
+            <strong style="font-size: 0.85rem; color: #334155;">Faculty Remarks:</strong>
+            <p style="margin: 0.25rem 0 0; font-size: 0.9rem; color: #1e293b;">{{ letter.faculty_remark }}</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('viewLetterModal_{{ letter.id }}')">Close</button>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<script>
+function handleLetterTypeChange(type) {
+  const subjectInput = document.getElementById('subject');
+  if (type === 'Leave Request' && !subjectInput.value) {
+    subjectInput.value = 'Application for Leave of Absence';
+  } else if (type === 'On Duty (OD)' && !subjectInput.value) {
+    subjectInput.value = 'Request for On-Duty (OD) Permission';
+  } else if (type === 'Apology Letter' && !subjectInput.value) {
+    subjectInput.value = 'Apology Letter Regarding Absence / Conduct';
+  } else if (type === 'Permission Request' && !subjectInput.value) {
+    subjectInput.value = 'Permission Request';
+  }
+}
+</script>
+{% endblock %}

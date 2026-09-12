@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard - SIMS{% endblock %}
+{% block header_title %}Administrator Overview{% endblock %}
+
+{% block content %}
+<!-- Quick Metric Summary Cards -->
+<div class="metrics-grid">
+  <div class="metric-card">
+    <div class="metric-icon blue">
+      <i class="fas fa-user-graduate"></i>
+    </div>
+    <div class="metric-data">
+      <h3>{{ total_students }}</h3>
+      <p>Total Students</p>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon teal">
+      <i class="fas fa-chalkboard-teacher"></i>
+    </div>
+    <div class="metric-data">
+      <h3>{{ total_faculty }}</h3>
+      <p>Faculty Members</p>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon green">
+      <i class="fas fa-book"></i>
+    </div>
+    <div class="metric-data">
+      <h3>{{ total_courses }}</h3>
+      <p>Active Courses</p>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon amber">
+      <i class="fas fa-hand-holding-usd"></i>
+    </div>
+    <div class="metric-data">
+      <h3>₹{{ "{:,.2f}".format(total_fee_pending) }}</h3>
+      <p>Pending Dues ({{ unpaid_count }} unpaid)</p>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Quick Action Bar -->
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-body" style="padding: 1rem 1.25rem;">
+    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+      <div style="font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+        <i class="fas fa-bolt" style="color: var(--accent);"></i> Quick Actions:
+      </div>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a href="{{ url_for('admin_students') }}" class="btn btn-primary btn-sm">
+          <i class="fas fa-user-plus"></i> Manage Students
+        </a>
+        <a href="{{ url_for('admin_faculty') }}" class="btn btn-secondary btn-sm">
+          <i class="fas fa-user-tie"></i> Manage Faculty
+        </a>
+        <a href="{{ url_for('admin_courses') }}" class="btn btn-secondary btn-sm">
+          <i class="fas fa-book-medical"></i> Manage Courses
+        </a>
+        <a href="{{ url_for('admin_fees') }}" class="btn btn-accent btn-sm">
+          <i class="fas fa-receipt"></i> Record Fee
+        </a>
+        <a href="{{ url_for('admin_timetable') }}" class="btn btn-secondary btn-sm">
+          <i class="fas fa-calendar-alt"></i> Set Timetable
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Two Column Dashboard Layout -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 1.5rem;">
+
+  <!-- Left: Recent Student Admissions -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-user-graduate" style="color: var(--primary);"></i> Recent Student Admissions</h2>
+      <a href="{{ url_for('admin_students') }}" class="btn btn-secondary btn-sm">View All</a>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Roll No</th>
+              <th>Class</th>
+              <th>Contact</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in recent_students %}
+              <tr>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    {% if s.photo_path %}
+                      <img src="{{ url_for('uploaded_file', filename=s.photo_path) }}" class="student-avatar" alt="{{ s.name }}">
+                    {% else %}
+                      <div class="avatar-initials">{{ s.name[:1] | upper }}</div>
+                    {% endif %}
+                    <span style="font-weight: 600;">{{ s.name }}</span>
+                  </div>
+                </td>
+                <td><code>{{ s.roll_no }}</code></td>
+                <td><span class="badge" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;">{{ s.class }}</span></td>
+                <td>{{ s.contact or 'N/A' }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2rem;">No students enrolled yet.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Class Distribution & Financial Snapshot -->
+  <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <!-- Classes Distribution -->
+    <div class="card">
+      <div class="card-header">
+        <h2><i class="fas fa-users-class" style="color: var(--accent);"></i> Enrollment by Class</h2>
+      </div>
+      <div class="card-body">
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          {% for c in classes_summary %}
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem;">
+                <span>{{ c.class }}</span>
+                <span>{{ c.count }} students</span>
+              </div>
+              <div style="height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden;">
+                <div style="width: {{ (c.count / (total_students or 1) * 100) | round }}%; height: 100%; background: linear-gradient(90deg, #1e3a8a, #0d9488); border-radius: 999px;"></div>
+              </div>
+            </div>
+          {% else %}
+            <p style="color: var(--text-muted); font-size: 0.85rem;">No classes registered yet.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Fee Collection Progress -->
+    <div class="card">
+      <div class="card-header">
+        <h2><i class="fas fa-chart-line" style="color: var(--success);"></i> Fee Collection Progress</h2>
+        <a href="{{ url_for('admin_fees') }}" class="btn btn-secondary btn-sm">Fee Center</a>
+      </div>
+      <div class="card-body">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem;">
+          <div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Total Collected</div>
+            <div style="font-size: 1.4rem; font-weight: 700; color: var(--success);">₹{{ "{:,.2f}".format(total_fee_paid) }}</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Total Due</div>
+            <div style="font-size: 1.4rem; font-weight: 700; color: var(--text-main);">₹{{ "{:,.2f}".format(total_fee_due) }}</div>
+          </div>
+        </div>
+
+        {% set pct = ((total_fee_paid / (total_fee_due or 1)) * 100) | round(1) %}
+        <div style="height: 12px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin-bottom: 0.5rem;">
+          <div style="width: {{ pct }}%; height: 100%; background: var(--success); border-radius: 999px;"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-muted);">
+          <span>Recovery Rate: <strong>{{ pct }}%</strong></span>
+          <span>Pending: <strong style="color: var(--danger);">₹{{ "{:,.2f}".format(total_fee_pending) }}</strong></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

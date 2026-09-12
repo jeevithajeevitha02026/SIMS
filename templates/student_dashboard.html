@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Dashboard - SIMS{% endblock %}
+{% block header_title %}Student Portal{% endblock %}
+
+{% block content %}
+<!-- Student Profile Banner -->
+<div class="card" style="background: linear-gradient(135deg, #1e3a8a, #0d9488); color: #ffffff; border: none; margin-bottom: 1.5rem;">
+  <div class="card-body" style="padding: 1.75rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem;">
+      <div style="display: flex; align-items: center; gap: 1.25rem;">
+        {% if student.photo_path %}
+          <img src="{{ url_for('uploaded_file', filename=student.photo_path) }}" style="width: 70px; height: 70px; border-radius: 999px; object-fit: cover; border: 3px solid #ffffff;" alt="{{ student.name }}">
+        {% else %}
+          <div style="width: 70px; height: 70px; border-radius: 999px; background: rgba(255, 255, 255, 0.2); border: 2px solid #ffffff; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: 700;">
+            {{ student.name[:1] | upper }}
+          </div>
+        {% endif %}
+        <div>
+          <h2 style="font-size: 1.5rem; font-weight: 700; color: #ffffff; margin-bottom: 0.25rem;">
+            {{ student.name }}
+          </h2>
+          <div style="font-size: 0.88rem; opacity: 0.9; display: flex; flex-wrap: wrap; gap: 1rem;">
+            <span><i class="fas fa-id-badge"></i> Roll No: <strong>{{ student.roll_no }}</strong></span>
+            <span><i class="fas fa-graduation-cap"></i> Class: <strong>{{ student.class }}</strong></span>
+            <span><i class="fas fa-phone"></i> {{ student.contact or 'No phone listed' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <a href="{{ url_for('student_letters') }}" class="btn" style="background: rgba(255, 255, 255, 0.2); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.4); font-weight: 600;">
+          <i class="fas fa-envelope-open-text"></i> Leave & OD Letters
+        </a>
+        <a href="{{ url_for('report_card', student_id=student.id) }}" class="btn" style="background: #ffffff; color: #1e3a8a; font-weight: 600; box-shadow: 0 4px 10px rgba(0,0,0,0.15);" target="_blank">
+          <i class="fas fa-file-invoice"></i> Download Report Card
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Metrics Row -->
+<div class="metrics-grid">
+  <!-- Attendance Percentage -->
+  <div class="metric-card">
+    <div class="metric-icon {% if attendance_pct >= 75 %}green{% elif attendance_pct >= 60 %}amber{% else %}red{% endif %}">
+      <i class="fas fa-user-check"></i>
+    </div>
+    <div class="metric-data">
+      <h3>{{ attendance_pct }}%</h3>
+      <p>Attendance ({{ attended_classes }}/{{ total_classes }} Days)</p>
+    </div>
+  </div>
+
+  <!-- Fee Status -->
+  <div class="metric-card">
+    <div class="metric-icon {% if fee_pending <= 0 %}green{% else %}amber{% endif %}">
+      <i class="fas fa-receipt"></i>
+    </div>
+    <div class="metric-data">
+      <h3>₹{{ "{:,.2f}".format(fee_pending) }}</h3>
+      <p>{% if fee_pending <= 0 %}Fees Fully Paid{% else %}Pending Balance{% endif %}</p>
+    </div>
+  </div>
+
+  <!-- Quick Timetable Summary -->
+  <div class="metric-card">
+    <div class="metric-icon teal">
+      <i class="fas fa-calendar-day"></i>
+    </div>
+    <div class="metric-data">
+      <h3>{{ today_schedule | length }}</h3>
+      <p>Lectures Today ({{ day_name }})</p>
+    </div>
+  </div>
+
+  <!-- Letters / OD Requests -->
+  <div class="metric-card">
+    <div class="metric-icon blue">
+      <i class="fas fa-envelope-open-text"></i>
+    </div>
+    <div class="metric-data">
+      <h3><a href="{{ url_for('student_letters') }}" style="color: inherit; text-decoration: none;">Requests</a></h3>
+      <p><a href="{{ url_for('student_letters') }}" style="color: var(--primary); font-weight: 600;">Leave, OD & Apology</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- Two-Column Section: Latest Marks & Today's Schedule -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 1.5rem;">
+
+  <!-- Recent Marks Performance -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-award" style="color: var(--primary);"></i> Recent Exam Performance</h2>
+      <a href="{{ url_for('student_marks') }}" class="btn btn-secondary btn-sm">Full Report</a>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Course</th>
+              <th>Exam</th>
+              <th>Score</th>
+              <th style="text-align: right;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in recent_marks %}
+              {% set pct = ((m.marks_obtained / m.total_marks) * 100) | round(1) %}
+              <tr>
+                <td><strong>{{ m.course_name }}</strong></td>
+                <td><span style="font-size: 0.8rem; color: var(--text-muted);">{{ m.exam_name }}</span></td>
+                <td><strong>{{ m.marks_obtained }}</strong> / {{ m.total_marks }} ({{ pct }}%)</td>
+                <td style="text-align: right;">
+                  {% if pct >= 80 %}
+                    <span class="badge badge-paid">A / Excellent</span>
+                  {% elif pct >= 60 %}
+                    <span class="badge badge-partial">B / Good</span>
+                  {% elif pct >= 40 %}
+                    <span class="badge badge-late">Pass</span>
+                  {% else %}
+                    <span class="badge badge-unpaid">Fail</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2rem;">No exam marks published yet.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Today's Classes -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-clock" style="color: var(--accent);"></i> Today's Classes ({{ day_name }})</h2>
+      <a href="{{ url_for('student_timetable') }}" class="btn btn-secondary btn-sm">Weekly Timetable</a>
+    </div>
+    <div class="card-body">
+      {% if today_schedule %}
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          {% for t in today_schedule %}
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+              <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="background: var(--primary-light); color: var(--primary); font-weight: 700; width: 36px; height: 36px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 0.85rem;">
+                  P{{ t.period }}
+                </div>
+                <div>
+                  <div style="font-weight: 600; color: var(--text-main);">{{ t.subject }}</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted);">
+                    Instructor: <strong>{{ t.faculty_name or 'Faculty Assigned' }}</strong>
+                  </div>
+                </div>
+              </div>
+              <span class="badge" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;">
+                Period {{ t.period }}{% if period_timings.get(t.period) %} ({{ period_timings.get(t.period) }}){% endif %}
+              </span>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+          <i class="fas fa-couch" style="font-size: 2rem; color: #cbd5e1; display: block; margin-bottom: 0.5rem;"></i>
+          No classes scheduled for today!
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

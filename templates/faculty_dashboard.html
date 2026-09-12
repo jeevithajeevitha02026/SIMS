@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}Faculty Dashboard - SIMS{% endblock %}
+{% block header_title %}Faculty Portal{% endblock %}
+
+{% block content %}
+<!-- Welcome Banner -->
+<div class="card" style="background: linear-gradient(135deg, #1e3a8a, #0d9488); color: #ffffff; border: none; margin-bottom: 1.5rem;">
+  <div class="card-body" style="padding: 1.75rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h2 style="font-size: 1.45rem; font-weight: 700; margin-bottom: 0.35rem; color: #ffffff;">
+          Welcome, {{ faculty_info.name }}
+        </h2>
+        <p style="opacity: 0.9; font-size: 0.9rem;">
+          Specialization: <strong>{{ faculty_info.subject or 'Faculty Member' }}</strong> &bull; Contact: {{ faculty_info.contact or 'N/A' }}
+        </p>
+      </div>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a href="{{ url_for('faculty_mailbox') }}" class="btn" style="background: rgba(255, 255, 255, 0.2); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.4);">
+          <i class="fas fa-inbox"></i> Mailbox
+          {% if pending_letters_count %}
+            <span class="badge" style="background: #ef4444; color: #ffffff; padding: 0.15rem 0.45rem; font-size: 0.7rem; margin-left: 0.35rem;">{{ pending_letters_count }}</span>
+          {% endif %}
+        </a>
+        <a href="{{ url_for('faculty_attendance') }}" class="btn" style="background: rgba(255, 255, 255, 0.2); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.4);">
+          <i class="fas fa-clipboard-check"></i> Mark Attendance
+        </a>
+        <a href="{{ url_for('faculty_marks') }}" class="btn" style="background: #ffffff; color: #1e3a8a; font-weight: 600;">
+          <i class="fas fa-edit"></i> Enter Marks
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Metrics Row -->
+<div class="metrics-grid">
+  <div class="metric-card">
+    <div class="metric-icon blue">
+      <i class="fas fa-book"></i>
+    </div>
+    <div class="metric-data">
+      <h3>{{ courses | length }}</h3>
+      <p>Assigned Courses</p>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon teal">
+      <i class="fas fa-user-graduate"></i>
+    </div>
+    <div class="metric-data">
+      <h3>{{ total_students }}</h3>
+      <p>Students Taught</p>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon green">
+      <i class="fas fa-calendar-day"></i>
+    </div>
+    <div class="metric-data">
+      <h3>{{ today_schedule | length }}</h3>
+      <p>Lectures Today ({{ day_name }})</p>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon {% if pending_letters_count %}amber{% else %}blue{% endif %}">
+      <i class="fas fa-envelope-open-text"></i>
+    </div>
+    <div class="metric-data">
+      <h3>{{ pending_letters_count }}</h3>
+      <p><a href="{{ url_for('faculty_mailbox') }}" style="color: inherit; text-decoration: underline;">Pending Letters</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- Two-Column Section: Assigned Courses & Today's Schedule -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 1.5rem;">
+
+  <!-- Assigned Courses Card -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-chalkboard" style="color: var(--primary);"></i> My Assigned Courses</h2>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Course Title</th>
+              <th>Class</th>
+              <th>Students</th>
+              <th style="text-align: right;">Quick Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in courses %}
+              <tr>
+                <td><strong>{{ c.name }}</strong></td>
+                <td><span class="badge" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;">{{ c.class }}</span></td>
+                <td>{{ c.student_count }} enrolled</td>
+                <td style="text-align: right;">
+                  <div class="action-btns" style="justify-content: flex-end;">
+                    <a href="{{ url_for('faculty_attendance', course_id=c.id) }}" class="btn btn-secondary btn-sm" title="Mark Attendance">
+                      <i class="fas fa-check-square"></i> Attendance
+                    </a>
+                    <a href="{{ url_for('faculty_marks', course_id=c.id) }}" class="btn btn-secondary btn-sm" title="Enter Marks">
+                      <i class="fas fa-poll"></i> Marks
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                  No courses assigned to your profile yet. Please contact the administrator.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Today's Schedule Card -->
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-clock" style="color: var(--accent);"></i> Today's Schedule ({{ day_name }})</h2>
+      <a href="{{ url_for('faculty_timetable') }}" class="btn btn-secondary btn-sm">Full Timetable</a>
+    </div>
+    <div class="card-body">
+      {% if today_schedule %}
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          {% for t in today_schedule %}
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+              <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="background: var(--primary-light); color: var(--primary); font-weight: 700; width: 36px; height: 36px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 0.85rem;">
+                  P{{ t.period }}
+                </div>
+                <div>
+                  <div style="font-weight: 600; color: var(--text-main);">{{ t.subject }}</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted);">Class: <strong>{{ t.class }}</strong></div>
+                </div>
+              </div>
+              <span class="badge" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">
+                Period {{ t.period }}{% if period_timings.get(t.period) %} ({{ period_timings.get(t.period) }}){% endif %}
+              </span>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+          <i class="fas fa-calendar-check" style="font-size: 2rem; color: #cbd5e1; display: block; margin-bottom: 0.5rem;"></i>
+          No lectures scheduled for today!
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

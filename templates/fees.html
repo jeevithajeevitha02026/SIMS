@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+
+{% block title %}Fee Records - SIMS{% endblock %}
+{% block header_title %}Student Fee & Payment Management{% endblock %}
+
+{% block content %}
+
+<!-- Financial Overview Metrics -->
+<div class="metrics-grid">
+  <div class="metric-card">
+    <div class="metric-icon blue">
+      <i class="fas fa-file-invoice-dollar"></i>
+    </div>
+    <div class="metric-data">
+      <h3>₹{{ "{:,.2f}".format(total_due) }}</h3>
+      <p>Total Invoiced</p>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon green">
+      <i class="fas fa-hand-holding-usd"></i>
+    </div>
+    <div class="metric-data">
+      <h3>₹{{ "{:,.2f}".format(total_paid) }}</h3>
+      <p>Total Paid / Settled</p>
+    </div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-icon {% if total_pending > 0 %}amber{% else %}green{% endif %}">
+      <i class="fas fa-exclamation-circle"></i>
+    </div>
+    <div class="metric-data">
+      <h3>₹{{ "{:,.2f}".format(total_pending) }}</h3>
+      <p>Outstanding Balance</p>
+    </div>
+  </div>
+</div>
+
+{% if not student_mode %}
+  <!-- ===================================================================== -->
+  <!-- ADMIN FEE MANAGEMENT                                                  -->
+  <!-- ===================================================================== -->
+
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-money-check-alt" style="color: var(--primary);"></i> Fee Ledgers ({{ fee_records | length }})</h2>
+      <button type="button" class="btn btn-primary" onclick="openModal('addFeeModal')">
+        <i class="fas fa-plus"></i> Assign Student Fee
+      </button>
+    </div>
+
+    <div class="card-body">
+      <!-- Search & Filters -->
+      <form method="GET" action="{{ url_for('admin_fees') }}" class="filter-bar">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" name="q" value="{{ search_query }}" placeholder="Search by student name or roll number...">
+        </div>
+
+        <select name="status" class="filter-select" onchange="this.form.submit()">
+          <option value="">All Payment Statuses</option>
+          <option value="Paid" {% if selected_status == 'Paid' %}selected{% endif %}>Paid</option>
+          <option value="Partial" {% if selected_status == 'Partial' %}selected{% endif %}>Partial</option>
+          <option value="Unpaid" {% if selected_status == 'Unpaid' %}selected{% endif %}>Unpaid</option>
+        </select>
+
+        <select name="class" class="filter-select" onchange="this.form.submit()">
+          <option value="">All Classes</option>
+          {% for c in classes %}
+            <option value="{{ c.class }}" {% if selected_class == c.class %}selected{% endif %}>{{ c.class }}</option>
+          {% endfor %}
+        </select>
+
+        <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+        {% if search_query or selected_status or selected_class %}
+          <a href="{{ url_for('admin_fees') }}" class="btn btn-secondary btn-sm">Reset</a>
+        {% endif %}
+      </form>
+
+      <!-- Fee Records Table -->
+      <div class="table-responsive">
+        <table class="custom-table filterable-table">
+          <thead>
+            <tr>
+              <th>Student Details</th>
+              <th>Class</th>
+              <th>Total Due</th>
+              <th>Amount Paid</th>
+              <th>Remaining</th>
+              <th>Due Date</th>
+              <th>Status</th>
+              <th style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in fee_records %}
+              {% set remaining = f.amount_due - f.amount_paid %}
+              <tr>
+                <td>
+                  <div style="font-weight: 600; color: var(--text-main);">{{ f.student_name }}</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted);">Roll No: <code>{{ f.roll_no }}</code></div>
+                </td>
+                <td><span class="badge" style="background: #eff6ff; color: #1e40af;">{{ f.class }}</span></td>
+                <td><strong>₹{{ "{:,.2f}".format(f.amount_due) }}</strong></td>
+                <td style="color: var(--success); font-weight: 600;">₹{{ "{:,.2f}".format(f.amount_paid) }}</td>
+                <td style="color: {% if remaining > 0 %}var(--danger){% else %}var(--success){% endif %}; font-weight: 600;">
+                  ₹{{ "{:,.2f}".format(remaining) }}
+                </td>
+                <td>{{ f.due_date or 'No date' }}</td>
+                <td>
+                  {% if f.status == 'Paid' %}
+                    <span class="badge badge-paid"><i class="fas fa-check-circle"></i> Paid</span>
+                  {% elif f.status == 'Partial' %}
+                    <span class="badge badge-partial"><i class="fas fa-adjust"></i> Partial</span>
+                  {% else %}
+                    <span class="badge badge-unpaid"><i class="fas fa-exclamation-circle"></i> Unpaid</span>
+                  {% endif %}
+                </td>
+                <td style="text-align: right;">
+                  <div class="action-btns" style="justify-content: flex-end;">
+                    {% if remaining > 0 %}
+                      <button type="button" class="btn btn-success btn-sm" title="Record Payment"
+                              onclick="recordPaymentModal({{ f.id }}, '{{ f.student_name | escape }}', '{{ f.roll_no }}', {{ f.amount_due }}, {{ f.amount_paid }})">
+                        <i class="fas fa-cash-register"></i> Pay
+                      </button>
+                    {% endif %}
+                    <form method="POST" action="{{ url_for('delete_fee', fee_id=f.id) }}" style="display: inline;" onsubmit="return confirm('Delete this fee entry?');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="btn btn-danger btn-icon" title="Delete Fee Record">
+                        <i class="fas fa-trash-alt"></i>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
+                  No fee records found.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+{% else %}
+  <!-- ===================================================================== -->
+  <!-- STUDENT FEE STATUS VIEW                                               -->
+  <!-- ===================================================================== -->
+
+  <div class="card">
+    <div class="card-header">
+      <h2><i class="fas fa-receipt" style="color: var(--primary);"></i> My Tuition & Fee Statement</h2>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Fee Ledger ID</th>
+              <th>Due Date</th>
+              <th>Billed Amount</th>
+              <th>Paid Amount</th>
+              <th>Outstanding Balance</th>
+              <th style="text-align: right;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in fee_records %}
+              {% set remaining = f.amount_due - f.amount_paid %}
+              <tr>
+                <td><code>#FEE-{{ f.id }}</code></td>
+                <td>{{ f.due_date or 'Immediate' }}</td>
+                <td><strong>₹{{ "{:,.2f}".format(f.amount_due) }}</strong></td>
+                <td style="color: var(--success); font-weight: 600;">₹{{ "{:,.2f}".format(f.amount_paid) }}</td>
+                <td style="color: {% if remaining > 0 %}var(--danger){% else %}var(--success){% endif %}; font-weight: 600;">
+                  ₹{{ "{:,.2f}".format(remaining) }}
+                </td>
+                <td style="text-align: right;">
+                  {% if f.status == 'Paid' %}
+                    <span class="badge badge-paid"><i class="fas fa-check-circle"></i> Settled</span>
+                  {% elif f.status == 'Partial' %}
+                    <span class="badge badge-partial"><i class="fas fa-adjust"></i> Partial Payment</span>
+                  {% else %}
+                    <span class="badge badge-unpaid"><i class="fas fa-exclamation-circle"></i> Payment Due</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">No fee transactions found.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+{% endif %}
+
+{% endblock %}
+
+{% block modals %}
+{% if not student_mode %}
+<!-- Add Fee Modal -->
+<div class="modal-backdrop" id="addFeeModal">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3><i class="fas fa-file-invoice-dollar" style="color: var(--primary);"></i> Create Fee Obligation</h3>
+      <button type="button" class="modal-close" onclick="closeModal('addFeeModal')">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('add_fee') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="fee_student_id">Select Student *</label>
+          <select id="fee_student_id" name="student_id" class="form-control" required>
+            <option value="">-- Choose Student --</option>
+            {% for s in students %}
+              <option value="{{ s.id }}">{{ s.name }} ({{ s.roll_no }} - {{ s.class }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="fee_amount_due">Amount Due (₹) *</label>
+            <input type="number" step="0.01" min="1" id="fee_amount_due" name="amount_due" class="form-control" placeholder="e.g. 2500.00" required>
+          </div>
+          <div class="form-group">
+            <label for="fee_amount_paid">Initial Payment (₹)</label>
+            <input type="number" step="0.01" min="0" id="fee_amount_paid" name="amount_paid" value="0.00" class="form-control">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="fee_due_date">Payment Due Date</label>
+          <input type="date" id="fee_due_date" name="due_date" class="form-control">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addFeeModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Fee Record</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Record Payment Modal -->
+<div class="modal-backdrop" id="recordPaymentModal">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3><i class="fas fa-cash-register" style="color: var(--success);"></i> Record Payment</h3>
+      <button type="button" class="modal-close" onclick="closeModal('recordPaymentModal')">&times;</button>
+    </div>
+    <form id="recordPaymentForm" method="POST" action="">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-body">
+        <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 1.25rem;">
+          <div style="font-size: 0.85rem; color: var(--text-muted);">Student:</div>
+          <div id="pay_student_display" style="font-weight: 700; font-size: 1.05rem; margin-bottom: 0.5rem;"></div>
+
+          <div style="display: flex; justify-content: space-between; font-size: 0.88rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
+            <span>Total Invoiced: <strong id="pay_due_display"></strong></span>
+            <span>Pending Balance: <strong id="pay_pending_display" style="color: var(--danger);"></strong></span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="payment_amount">Payment Amount to Collect (₹) *</label>
+          <input type="number" step="0.01" min="0.01" id="payment_amount" name="payment_amount" class="form-control" placeholder="0.00" required>
+          <span class="form-help">Enter amount paid by student today.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('recordPaymentModal')">Cancel</button>
+        <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Confirm Payment</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

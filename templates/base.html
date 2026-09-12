@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}SIMS - Student Information Management System{% endblock %}</title>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+
+{% if current_user %}
+  <div class="app-wrapper">
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay"></div>
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo-icon">
+          <i class="fas fa-graduation-cap"></i>
+        </div>
+        <div class="sidebar-brand">
+          <h2>SIMS Portal</h2>
+          
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        {% if current_user.role == 'admin' %}
+          <div class="nav-section-title">Administration</div>
+          <a href="{{ url_for('admin_dashboard') }}" class="nav-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+            <i class="fas fa-chart-pie"></i>
+            <span>Dashboard</span>
+          </a>
+          <a href="{{ url_for('admin_students') }}" class="nav-link {% if request.endpoint == 'admin_students' %}active{% endif %}">
+            <i class="fas fa-user-graduate"></i>
+            <span>Students</span>
+          </a>
+          <a href="{{ url_for('admin_faculty') }}" class="nav-link {% if request.endpoint == 'admin_faculty' %}active{% endif %}">
+            <i class="fas fa-chalkboard-teacher"></i>
+            <span>Faculty</span>
+          </a>
+          <a href="{{ url_for('admin_courses') }}" class="nav-link {% if request.endpoint == 'admin_courses' %}active{% endif %}">
+            <i class="fas fa-book-open"></i>
+            <span>Courses</span>
+          </a>
+
+          <div class="nav-section-title">Academic & Finance</div>
+          <a href="{{ url_for('faculty_attendance') }}" class="nav-link {% if request.endpoint == 'faculty_attendance' %}active{% endif %}">
+            <i class="fas fa-calendar-check"></i>
+            <span>Attendance</span>
+          </a>
+          <a href="{{ url_for('faculty_marks') }}" class="nav-link {% if request.endpoint == 'faculty_marks' %}active{% endif %}">
+            <i class="fas fa-poll"></i>
+            <span>Grades & Marks</span>
+          </a>
+          <a href="{{ url_for('admin_fees') }}" class="nav-link {% if request.endpoint == 'admin_fees' %}active{% endif %}">
+            <i class="fas fa-file-invoice-dollar"></i>
+            <span>Fee Records</span>
+          </a>
+          <a href="{{ url_for('admin_timetable') }}" class="nav-link {% if request.endpoint == 'admin_timetable' %}active{% endif %}">
+            <i class="fas fa-calendar-alt"></i>
+            <span>Timetable</span>
+          </a>
+
+        {% elif current_user.role == 'faculty' %}
+          <div class="nav-section-title">Faculty Portal</div>
+          <a href="{{ url_for('faculty_dashboard') }}" class="nav-link {% if request.endpoint == 'faculty_dashboard' %}active{% endif %}">
+            <i class="fas fa-chart-pie"></i>
+            <span>My Overview</span>
+          </a>
+          <a href="{{ url_for('faculty_attendance') }}" class="nav-link {% if request.endpoint == 'faculty_attendance' %}active{% endif %}">
+            <i class="fas fa-calendar-check"></i>
+            <span>Mark Attendance</span>
+          </a>
+          <a href="{{ url_for('faculty_marks') }}" class="nav-link {% if request.endpoint == 'faculty_marks' %}active{% endif %}">
+            <i class="fas fa-edit"></i>
+            <span>Enter Marks</span>
+          </a>
+          <a href="{{ url_for('faculty_timetable') }}" class="nav-link {% if request.endpoint == 'faculty_timetable' %}active{% endif %}">
+            <i class="fas fa-clock"></i>
+            <span>My Schedule</span>
+          </a>
+          <a href="{{ url_for('faculty_mailbox') }}" class="nav-link {% if request.endpoint == 'faculty_mailbox' %}active{% endif %}">
+            <i class="fas fa-inbox"></i>
+            <span>Student Mailbox</span>
+            {% if pending_letters_count %}
+              <span class="badge" style="background: #ef4444; color: #ffffff; margin-left: auto; font-size: 0.68rem; padding: 0.2rem 0.5rem;">{{ pending_letters_count }}</span>
+            {% endif %}
+          </a>
+
+        {% elif current_user.role == 'student' %}
+          <div class="nav-section-title">Student Portal</div>
+          <a href="{{ url_for('student_dashboard') }}" class="nav-link {% if request.endpoint == 'student_dashboard' %}active{% endif %}">
+            <i class="fas fa-home"></i>
+            <span>Dashboard</span>
+          </a>
+          <a href="{{ url_for('student_attendance') }}" class="nav-link {% if request.endpoint == 'student_attendance' %}active{% endif %}">
+            <i class="fas fa-clipboard-user"></i>
+            <span>My Attendance</span>
+          </a>
+          <a href="{{ url_for('student_marks') }}" class="nav-link {% if request.endpoint == 'student_marks' %}active{% endif %}">
+            <i class="fas fa-award"></i>
+            <span>Marks & Report</span>
+          </a>
+          <a href="{{ url_for('student_fees') }}" class="nav-link {% if request.endpoint == 'student_fees' %}active{% endif %}">
+            <i class="fas fa-receipt"></i>
+            <span>Fee Status</span>
+          </a>
+          <a href="{{ url_for('student_timetable') }}" class="nav-link {% if request.endpoint == 'student_timetable' %}active{% endif %}">
+            <i class="fas fa-calendar-week"></i>
+            <span>Class Timetable</span>
+          </a>
+          <a href="{{ url_for('student_letters') }}" class="nav-link {% if request.endpoint == 'student_letters' %}active{% endif %}">
+            <i class="fas fa-envelope-open-text"></i>
+            <span>Letters & Requests</span>
+          </a>
+        {% endif %}
+
+        <div class="nav-section-title">User Account</div>
+        {% if current_user.role != 'student' %}
+        <a href="{{ url_for('change_password') }}" class="nav-link {% if request.endpoint == 'change_password' %}active{% endif %}">
+          <i class="fas fa-key"></i>
+          <span>Change Password</span>
+        </a>
+        {% endif %}
+        <a href="{{ url_for('logout') }}" class="nav-link">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Log Out</span>
+        </a>
+      </nav>
+
+      <!-- Sidebar User Profile Footer -->
+      <div class="sidebar-footer">
+        <div class="user-snippet">
+          <div class="user-avatar-placeholder">
+            {{ current_user.name[:1] | upper }}
+          </div>
+          <div class="user-snippet-info">
+            <div class="user-snippet-name">{{ current_user.name }}</div>
+            <div class="user-snippet-role">
+              <i class="fas fa-circle" style="font-size: 6px;"></i>
+              {{ current_user.role | capitalize }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
+      <!-- Top Header Navigation -->
+      <header class="top-header">
+        <div class="top-left">
+          <button type="button" class="sidebar-toggle-btn" aria-label="Toggle Sidebar">
+            <i class="fas fa-bars"></i>
+          </button>
+          <div class="page-title">
+            <h1>{% block header_title %}Dashboard{% endblock %}</h1>
+          </div>
+        </div>
+
+        <div class="top-right">
+          <span class="role-badge {{ current_user.role }}">
+            <i class="fas fa-shield-alt"></i>
+            {{ current_user.role }}
+          </span>
+          {% if current_user.role != 'student' %}
+          <a href="{{ url_for('change_password') }}" class="header-btn" title="Change Password">
+            <i class="fas fa-lock"></i>
+          </a>
+          {% endif %}
+          <a href="{{ url_for('logout') }}" class="header-btn danger" title="Sign Out">
+            <i class="fas fa-power-off"></i>
+            <span>Sign Out</span>
+          </a>
+        </div>
+      </header>
+
+      <!-- Page Container -->
+      <main class="page-container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="alert-wrapper">
+              {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                  <div class="alert-content">
+                    {% if category == 'success' %}
+                      <i class="fas fa-check-circle"></i>
+                    {% elif category == 'danger' %}
+                      <i class="fas fa-exclamation-triangle"></i>
+                    {% elif category == 'warning' %}
+                      <i class="fas fa-exclamation-circle"></i>
+                    {% else %}
+                      <i class="fas fa-info-circle"></i>
+                    {% endif %}
+                    <span>{{ message }}</span>
+                  </div>
+                  <button type="button" class="alert-close" onclick="this.parentElement.remove()">&times;</button>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+      </main>
+
+      <!-- App Footer -->
+      <footer class="app-footer">
+        <div>Student Information Management System (SIMS) &bull; College ERP</div>
+        <div>System Version 2.0 &bull; Secure & Session-Protected</div>
+      </footer>
+    </div>
+  </div>
+
+{% else %}
+  <!-- Fallback layout for non-authenticated pages (e.g. 404 or custom errors) -->
+  <div style="padding: 2rem; max-width: 600px; margin: 5rem auto; text-align: center;">
+    <h2>Page Not Found</h2>
+    <p style="color: #64748b; margin: 1rem 0;">The requested page could not be located.</p>
+    <a href="{{ url_for('login') }}" class="btn btn-primary">Return to Login</a>
+  </div>
+{% endif %}
+
+<!-- Dynamic Modals Container -->
+{% block modals %}{% endblock %}
+
+<!-- Core Scripts -->
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+{% block scripts %}{% endblock %}
+
+</body>
+</html>

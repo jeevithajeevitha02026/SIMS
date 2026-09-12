@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+
+{% block title %}Weekly Timetable - SIMS{% endblock %}
+{% block header_title %}Class Weekly Timetable{% endblock %}
+
+{% block content %}
+
+<!-- Header / Class Selector Controls -->
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-body">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        {% if not view_only %}
+          <form method="GET" action="{{ url_for('admin_timetable') }}" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <label style="font-size: 0.88rem; font-weight: 600;">Select Class Cohort:</label>
+            <select name="class" class="filter-select" onchange="this.form.submit()">
+              {% for c in classes %}
+                <option value="{{ c.class }}" {% if selected_class == c.class %}selected{% endif %}>{{ c.class }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        {% else %}
+          <div style="font-size: 1.05rem; font-weight: 600; color: var(--text-main);">
+            <i class="fas fa-calendar-alt" style="color: var(--primary);"></i>
+            Class: <span class="badge" style="background: #eff6ff; color: #1e40af; font-size: 0.9rem;">{{ selected_class }}</span>
+          </div>
+        {% endif %}
+      </div>
+
+      {% if not view_only %}
+        <button type="button" class="btn btn-primary" onclick="openModal('addTimetableModal')">
+          <i class="fas fa-plus"></i> Set Timetable Slot
+        </button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Weekly Schedule Matrix -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h2><i class="fas fa-calendar-week" style="color: var(--primary);"></i> Weekly Schedule Matrix</h2>
+      <span style="font-size: 0.8rem; color: var(--text-muted);">
+        5 Hours Schedule &bull; Mon - Sat &bull; Tea Break (11:30 AM - 11:40 AM)
+      </span>
+    </div>
+    {% if selected_class %}
+      <span class="badge" style="background: #f0fdfa; color: #0d9488; font-size: 0.82rem; padding: 0.35rem 0.75rem;">
+        Cohort: <strong>{{ selected_class }}</strong>
+      </span>
+    {% endif %}
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="timetable-table">
+        <thead>
+          <tr>
+            <th class="timetable-day-header" style="width: 110px;">Day</th>
+            <th>
+              Period 1
+              <div style="font-size: 0.72rem; font-weight: 500; color: #64748b;">9:00 - 9:50 AM</div>
+            </th>
+            <th>
+              Period 2
+              <div style="font-size: 0.72rem; font-weight: 500; color: #64748b;">9:50 - 10:40 AM</div>
+            </th>
+            <th>
+              Period 3
+              <div style="font-size: 0.72rem; font-weight: 500; color: #64748b;">10:40 - 11:30 AM</div>
+            </th>
+            <th style="background: #fef3c7; color: #92400e; width: 90px; border-color: #fde68a;">
+              <i class="fas fa-coffee" style="color: #b45309;"></i> Break
+              <div style="font-size: 0.7rem; font-weight: 600; color: #b45309;">11:30 - 11:40</div>
+            </th>
+            <th>
+              Period 4
+              <div style="font-size: 0.72rem; font-weight: 500; color: #64748b;">11:40 - 12:30 PM</div>
+            </th>
+            <th>
+              Period 5
+              <div style="font-size: 0.72rem; font-weight: 500; color: #64748b;">12:30 - 1:20 PM</div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for day in days %}
+            <tr>
+              <td class="timetable-day-header">
+                <div>{{ day }}</div>
+                {% set day_orders = {'Monday': 'Day Order I', 'Tuesday': 'Day Order II', 'Wednesday': 'Day Order III', 'Thursday': 'Day Order IV', 'Friday': 'Day Order V', 'Saturday': 'Day Order VI'} %}
+                <span style="font-size: 0.72rem; font-weight: 500; color: #64748b; display: block; margin-top: 2px;">{{ day_orders.get(day, '') }}</span>
+              </td>
+
+              <!-- Periods 1 to 3 -->
+              {% for p in [1, 2, 3] %}
+                {% set slot = schedule[day][p] %}
+                <td>
+                  {% if slot %}
+                    <div class="timetable-slot filled">
+                      <div class="subject-title">{{ slot.subject }}</div>
+                      {% if slot.faculty_name %}
+                        <div class="faculty-subtitle"><i class="fas fa-user-tie"></i> {{ slot.faculty_name }}</div>
+                      {% endif %}
+
+                      {% if not view_only %}
+                        <form method="POST" action="{{ url_for('delete_timetable', item_id=slot.id) }}" style="margin-top: 0.35rem;" onsubmit="return confirm('Clear Period {{ p }} on {{ day }}?');">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <button type="submit" class="btn btn-danger btn-icon" style="width: 20px; height: 20px; font-size: 0.6rem;" title="Clear slot">
+                            <i class="fas fa-times"></i>
+                          </button>
+                        </form>
+                      {% endif %}
+                    </div>
+                  {% else %}
+                    <div class="timetable-slot" style="color: var(--text-light); font-style: italic;">
+                      Free
+                    </div>
+                  {% endif %}
+                </td>
+              {% endfor %}
+
+              <!-- Tea Break Column -->
+              <td style="background: #fffbeb; color: #b45309; font-size: 0.75rem; font-weight: 600; vertical-align: middle; border-color: #fef3c7;">
+                <span style="writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: 1px; text-transform: uppercase;">Tea Break</span>
+              </td>
+
+              <!-- Periods 4 and 5 -->
+              {% for p in [4, 5] %}
+                {% set slot = schedule[day][p] %}
+                <td>
+                  {% if slot %}
+                    <div class="timetable-slot filled">
+                      <div class="subject-title">{{ slot.subject }}</div>
+                      {% if slot.faculty_name %}
+                        <div class="faculty-subtitle"><i class="fas fa-user-tie"></i> {{ slot.faculty_name }}</div>
+                      {% endif %}
+
+                      {% if not view_only %}
+                        <form method="POST" action="{{ url_for('delete_timetable', item_id=slot.id) }}" style="margin-top: 0.35rem;" onsubmit="return confirm('Clear Period {{ p }} on {{ day }}?');">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <button type="submit" class="btn btn-danger btn-icon" style="width: 20px; height: 20px; font-size: 0.6rem;" title="Clear slot">
+                            <i class="fas fa-times"></i>
+                          </button>
+                        </form>
+                      {% endif %}
+                    </div>
+                  {% else %}
+                    <div class="timetable-slot" style="color: var(--text-light); font-style: italic;">
+                      Free
+                    </div>
+                  {% endif %}
+                </td>
+              {% endfor %}
+
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block modals %}
+{% if not view_only %}
+<!-- Add Timetable Slot Modal -->
+<div class="modal-backdrop" id="addTimetableModal">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3><i class="fas fa-calendar-plus" style="color: var(--primary);"></i> Add or Edit Timetable Slot</h3>
+      <button type="button" class="modal-close" onclick="closeModal('addTimetableModal')">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('add_timetable') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-body">
+        <!-- Editable Target Class Field with Suggestions -->
+        <div class="form-group">
+          <label for="slot_class">Target Class / Cohort *</label>
+          <input type="text" id="slot_class" name="class" list="classList" class="form-control" value="{{ selected_class }}" placeholder="e.g. CS-Year1, BCA-Year2" required>
+          <datalist id="classList">
+            {% for c in classes %}
+              <option value="{{ c.class }}"></option>
+            {% endfor %}
+          </datalist>
+          <span class="form-help">You can change this class to any cohort or type a new class name.</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="slot_day">Day of Week *</label>
+            <select id="slot_day" name="day" class="form-control" required>
+              {% for d in days %}
+                <option value="{{ d }}">{{ d }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="slot_period">Period Number (1 - 5) *</label>
+            <select id="slot_period" name="period" class="form-control" required>
+              <option value="1">Period 1 (9:00 - 9:50 AM)</option>
+              <option value="2">Period 2 (9:50 - 10:40 AM)</option>
+              <option value="3">Period 3 (10:40 - 11:30 AM)</option>
+              <option value="4">Period 4 (11:40 - 12:30 PM)</option>
+              <option value="5">Period 5 (12:30 - 1:20 PM)</option>
+            </select>
+            <span class="form-help">Tea Break: 11:30 AM - 11:40 AM</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="slot_subject">Subject / Course Name *</label>
+          <input type="text" id="slot_subject" name="subject" class="form-control" placeholder="e.g. CS101: Programming in C" required>
+        </div>
+
+        <div class="form-group">
+          <label for="slot_faculty">Assigned Instructor</label>
+          <select id="slot_faculty" name="faculty_id" class="form-control">
+            <option value="">-- Select Faculty (Optional) --</option>
+            {% for f in faculty_list %}
+              <option value="{{ f.id }}">{{ f.name }} ({{ f.subject or 'General' }})</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addTimetableModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Slot</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+
+{% block title %}Courses Management - SIMS{% endblock %}
+{% block header_title %}Academic Courses{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h2><i class="fas fa-book-open" style="color: var(--primary);"></i> Courses ({{ courses | length }})</h2>
+    <button type="button" class="btn btn-primary" onclick="openModal('addCourseModal')">
+      <i class="fas fa-plus"></i> Add New Course
+    </button>
+  </div>
+
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Course Title</th>
+            <th>Target Class</th>
+            <th>Assigned Faculty</th>
+            <th>Enrolled Students</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in courses %}
+            <tr>
+              <td>
+                <div style="font-weight: 600; color: var(--text-main);">{{ c.name }}</div>
+              </td>
+              <td>
+                <span class="badge" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;">{{ c.class }}</span>
+              </td>
+              <td>
+                {% if c.faculty_name %}
+                  <span style="display: inline-flex; align-items: center; gap: 0.35rem;">
+                    <i class="fas fa-chalkboard-teacher" style="color: var(--accent);"></i>
+                    {{ c.faculty_name }}
+                  </span>
+                {% else %}
+                  <span style="color: var(--text-light); font-style: italic;">Unassigned</span>
+                {% endif %}
+              </td>
+              <td>
+                <strong>{{ c.student_count }}</strong> students
+              </td>
+              <td style="text-align: right;">
+                <div class="action-btns" style="justify-content: flex-end;">
+                  <button type="button" class="btn btn-secondary btn-icon" title="Edit Course"
+                          onclick="editCourseModal({{ c.id }}, '{{ c.name | escape }}', '{{ c.class | escape }}', '{{ c.faculty_id or '' }}')">
+                    <i class="fas fa-pencil-alt"></i>
+                  </button>
+                  <form method="POST" action="{{ url_for('delete_course', course_id=c.id) }}" style="display: inline;" onsubmit="return confirm('Delete course {{ c.name }}? Attendance and marks linked to this course will also be removed.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger btn-icon" title="Delete Course">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No courses created yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Add Course Modal -->
+<div class="modal-backdrop" id="addCourseModal">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3><i class="fas fa-book" style="color: var(--primary);"></i> Create New Course</h3>
+      <button type="button" class="modal-close" onclick="closeModal('addCourseModal')">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('add_course') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="course_name">Course Title *</label>
+          <input type="text" id="course_name" name="name" class="form-control" placeholder="e.g. C103: Operating system" required>
+        </div>
+        <div class="form-group">
+          <label for="course_class">Assigned Class / Cohort *</label>
+          <input type="text" id="course_class" name="class" class="form-control" placeholder="e.g. Bca-Year1" required>
+        </div>
+        <div class="form-group">
+          <label for="faculty_id">Course Instructor</label>
+          <select id="faculty_id" name="faculty_id" class="form-control">
+            <option value="">-- Select Faculty (Optional) --</option>
+            {% for f in faculty_list %}
+              <option value="{{ f.id }}">{{ f.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('addCourseModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Course</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Course Modal -->
+<div class="modal-backdrop" id="editCourseModal">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h3><i class="fas fa-edit" style="color: var(--primary);"></i> Edit Course</h3>
+      <button type="button" class="modal-close" onclick="closeModal('editCourseModal')">&times;</button>
+    </div>
+    <form id="editCourseForm" method="POST" action="">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="edit_course_name">Course Title *</label>
+          <input type="text" id="edit_course_name" name="name" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="edit_course_class">Target Class *</label>
+          <input type="text" id="edit_course_class" name="class" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="edit_course_faculty">Course Instructor</label>
+          <select id="edit_course_faculty" name="faculty_id" class="form-control">
+            <option value="">-- Select Faculty (Optional) --</option>
+            {% for f in faculty_list %}
+              <option value="{{ f.id }}">{{ f.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('editCourseModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Update Course</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
